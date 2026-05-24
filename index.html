@@ -955,7 +955,14 @@ function renderDetail(paper) {
 // ── PAPER ACTIONS ──
 function updateField(id, field, value) {
   const p = state.papers.find(p => p.id === id);
-  if (p) { p[field] = value; saveState(); renderSidebar(); updateCounts(); renderPapers(); }
+  if (p) {
+  p[field] = value;
+  saveState();
+  renderSidebar();
+  updateCounts();
+  renderPapers();
+  if (state.selectedPaper === id) renderDetail(p);
+}
 }
 
 function toggleStar(id) {
