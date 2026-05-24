@@ -28,6 +28,19 @@
   --sidebar-w: 240px;
   --detail-w: 380px;
 }
+  .collection-picker {
+  position:absolute; right:40px; top:10px; z-index:100;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:6px; min-width:180px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.12);
+}
+.collection-picker-item {
+  padding:7px 10px; border-radius:7px; font-size:13px;
+  cursor:pointer; display:flex; align-items:center; gap:8px;
+  color:var(--text2); transition:background 0.1s;
+}
+.collection-picker-item:hover { background:var(--bg); color:var(--text); }
+.collection-picker-item.active { color:var(--accent); font-weight:600; }
 
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Sora',sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; }
@@ -617,6 +630,52 @@ body.drag-over .papers-panel { outline:3px dashed var(--accent); outline-offset:
 // ── CONFIG ──
 const TEAM_PASSWORD = "research2026";
 const MAX_MEMBERS   = 30;
+  function toggleCollectionPicker(event, paperId) {
+  event.stopPropagation();
+  // close any open picker first
+  document.querySelectorAll('.collection-picker').forEach(el => el.remove());
+
+  const paper = state.papers.find(p => p.id === paperId);
+  if (!paper) return;
+
+  const picker = document.createElement('div');
+  picker.className = 'collection-picker';
+  picker.innerHTML = [
+    `<div class="collection-picker-item ${!paper.library ? 'active' : ''}"
+      onclick="event.stopPropagation();assignCollection('${paperId}',null)">
+      — No collection —
+    </div>`,
+    ...state.libraries.map(l => `
+      <div class="collection-picker-item ${paper.library === l.id ? 'active' : ''}"
+        onclick="event.stopPropagation();assignCollection('${paperId}','${l.id}')">
+        <span style="color:${l.color}">📁</span> ${esc(l.name)}
+      </div>`)
+  ].join('');
+
+  // find the card and append
+  const card = event.currentTarget.closest('.paper-card');
+  card.style.position = 'relative';
+  card.appendChild(picker);
+
+  // close when clicking outside
+  setTimeout(() => document.addEventListener('click', () => {
+    picker.remove();
+  }, { once: true }), 0);
+}
+
+function assignCollection(paperId, libId) {
+  const p = state.papers.find(p => p.id === paperId);
+  if (p) {
+    p.library = libId || '';
+    saveState();
+    renderSidebar();
+    updateCounts();
+    renderPapers();
+    if (state.selectedPaper === paperId) renderDetail(p);
+  }
+  document.querySelectorAll('.collection-picker').forEach(el => el.remove());
+  toast(libId ? `📁 Added to ${getLibName(libId)}` : '✕ Removed from collection');
+}
 
 // ── STATE ──
 let state = {
@@ -797,6 +856,7 @@ function renderPapers() {
           </div>
         </div>
         <button class="star-btn" onclick="event.stopPropagation();toggleStar('${p.id}')">${p.starred?'★':'☆'}</button>
+        <button class="star-btn" title="Add to collection" onclick="toggleCollectionPicker(event,'${p.id}')">📁</button>
       </div>
       ${p.notes ? '<div class="paper-note-indicator" title="Has notes">📝</div>' : ''}
     </div>
